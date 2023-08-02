@@ -1,0 +1,279 @@
+---
+title: "Housing Market Indices"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    storyboard: true
+    theme: cerulean
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(readxl)
+library(dplyr)
+library(zoo)
+library(xts)
+library(ggplot2)
+options(scipen = 999)
+library(reshape2)
+library(scales)
+library(tidyr)
+library(stargazer)
+library(data.table)
+library(quantmod)
+
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(reshape2)
+library(scales)
+library(knitr)
+library(plotly)
+library(dygraphs)
+library(leaflet)
+library(maps)
+library(tigris)
+library(geojson)
+library(ggmap)
+library(broom)
+```
+
+
+Market Indicators {data-orientation=rows}
+=======================================================================
+
+Column 
+-----------------------------------------------------------------------
+
+### **Supply**
+```{r,message=FALSE,warning=FALSE,include=FALSE}
+getSymbols('TTLCONS',src='FRED') #Total Construction Spending
+TTLCONS<-data.frame(date=index(TTLCONS), coredata(TTLCONS))
+
+getSymbols('HOUST',src='FRED') #Housing Starts: Total: New Privately Owned Housing Units Started 
+HOUST<-data.frame(date=index(HOUST), coredata(HOUST))
+
+getSymbols('PRRESCONS',src='FRED') #Total Private Construction Spending: Residential  
+PRRESCONS<-data.frame(date=index(PRRESCONS), coredata(PRRESCONS))
+
+```
+
+**Total Construction Spending:** See [Construction Spending](https://www.census.gov/construction/c30/definitions.html){target="_blank"} for definitions
+
+**Total Private Construction Spending:** Residential: see above for definitions
+
+**Housing Starts:** "As provided by the Census, start occurs when excavation begins for the footings or foundation of a building. All housing units in a multifamily building are defined as being started when this excavation begins. Beginning with data for September 1992, estimates of housing starts include units in structures being totally rebuilt on an existing foundation." (source:Federal Reserve Bank of St. Louis)
+
+### **Total Construction Spending (Millions of Dollars)**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(TTLCONS,x=~date,y=~TTLCONS,mode="line",type="scatter", line = list(color = 'rgb(22, 96, 167)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = ""))
+```
+
+### **Total Private Construction Spending: Residential (Millions of Dollars)**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(PRRESCONS,x=~date,y=~PRRESCONS,mode="line",type="scatter", line = list(color = 'rgb(22, 96, 167)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = ""))
+```
+
+### **Housing Starts (Thousands of Units)**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(HOUST,x=~date,y=~HOUST,mode="line",type="scatter", line = list(color = 'rgb(22, 96, 167)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = ""))
+```
+
+Column 
+-----------------------------------------------------------------------
+### **Housing** 
+
+```{r,message=FALSE,warning=FALSE,include=FALSE}
+getSymbols('EXHOSLUSM495S',src='FRED') #Existing Home Sales 
+EXHOSLUSM495S<-data.frame(date=index(EXHOSLUSM495S), coredata(EXHOSLUSM495S))
+
+getSymbols('HSN1F',src='FRED') #New One Family Houses Sold: United States 
+HSN1F<-data.frame(date=index(HSN1F), coredata(HSN1F))
+
+getSymbols('MSPUS',src='FRED') #Median Sales Price of Houses Sold for the United States
+MSPUS<-data.frame(date=index(MSPUS), coredata(MSPUS))
+
+```
+
+**Existing Home Sales:** "Existing-home sales are based on closing transactions of single-family, townhomes, condominiums and cooperative homes." (source:National Association of Realtors reterived from Federal Reserve Bank of St. Louis)
+
+**New One Family Houses Sold:** U.S. Census Bureau and U.S. Department of Housing and Urban Development, New One Family Houses Sold: United States, retrieved from FRED, Federal Reserve Bank of St. Louis; 
+
+**Median Sales Price of Houses Sold:** U.S. Census Bureau and U.S. Department of Housing and Urban Development, Median Sales Price of Houses Sold for the United States, retrieved from FRED, Federal Reserve Bank of St.
+
+### **Existing Home Sales**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(EXHOSLUSM495S,x=~date,y=~EXHOSLUSM495S,mode="line",type="scatter",line = list(color = 'rgb(205, 12, 24)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = ""))
+
+```
+
+### **New One Family Houses Sold (Thousands)**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(HSN1F,x=~date,y=~HSN1F,mode="line",type="scatter",line = list(color = 'rgb(205, 12, 24)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = ""))
+```
+
+### **Median Sales Price of Houses Sold**
+```{r,warning=FALSE,message=FALSE}
+
+plot_ly(MSPUS,x=~date,y=~MSPUS,mode="line",type="scatter",line = list(color = 'rgb(205, 12, 24)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = ""))
+```
+
+
+Column
+-----------------------------------------------------------------------
+### **Rates**
+```{r,message=FALSE,warning=FALSE,include=FALSE}
+
+getSymbols('MORTGAGE30US',src='FRED') #30-Year Fixed Rate Mortgage Average in the United States
+getSymbols('MORTGAGE5US',src='FRED') #5/1-Year Adjustable Rate Mortgage Average in the United State
+getSymbols('DGS10',src='FRED')        #10-Year Treasury Constant Maturity Rate
+
+mort30<-apply.monthly(MORTGAGE30US,mean)
+mort5<-apply.monthly(MORTGAGE5US,mean,na.rm=TRUE)
+tr10<-apply.monthly(DGS10,mean,na.rm=TRUE)
+
+
+mort30<-data.frame(date=index(mort30), coredata(mort30)) 
+mort30<- mort30 %>% mutate(date=as.Date(as.yearmon(date), frac = 1))
+
+mort5<-data.frame(date=index(mort5), coredata(mort5)) 
+mort5<- mort5 %>% mutate(date=as.Date(as.yearmon(date), frac = 1))
+
+tr10<-data.frame(date=index(tr10), coredata(tr10))
+tr10<- tr10 %>% mutate(date=as.Date(as.yearmon(date), frac = 1))
+
+spread<- inner_join(mort30,tr10)
+spread<- spread %>% mutate(spread=MORTGAGE30US-DGS10)
+
+```
+
+**30-Year Fixed Rate Mortgage:** Freddie Mac, 30-Year Fixed Rate Mortgage Average in the United States, retrieved from FRED, Federal Reserve Bank of St. Louis;
+
+**5/1-Year Adjustable Rate Mortgage:** Freddie Mac, 5/1-Year Adjustable Rate Mortgage Average in the United States, retrieved from FRED, Federal Reserve Bank of St. Louis;
+
+**Spread:** difference between 30-Year Fixed Rate Mortgage Average and 10-Year Treasury Constant Maturity Rate. 
+
+### **30-Year Fixed Rate Mortgage Average**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(mort30,x=~date,y=~MORTGAGE30US,mode="line",type="scatter", line = list(color = 'rgb(22, 96, 167)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = "",ticksuffix = "%",hoverformat = '.4f'))
+```
+
+### **5/1-Year Adjustable Rate Mortgage Average** 
+```{r,message=FALSE,warning=FALSE}
+plot_ly(mort5,x=~date,y=~MORTGAGE5US,mode="line",type="scatter", line = list(color = 'rgb(22, 96, 167)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = "",ticksuffix = "%",hoverformat = '.4f'))
+```
+
+### **Spread**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(spread,x=~date,y=~spread,mode="line",type="scatter", line = list(color = 'rgb(22, 96, 167)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = "",ticksuffix = "%",hoverformat = '.4f'))
+```
+
+Column 
+-----------------------------------------------------------------------
+
+### **Indices** 
+
+```{r,message=FALSE,warning=FALSE,include=FALSE}
+
+getSymbols('CSUSHPINSA',src='FRED')#S&P/Case-Shiller U.S. National Home Price Index 
+CSUSHPINSA<-data.frame(date=index(CSUSHPINSA), coredata(CSUSHPINSA))
+
+getSymbols('USSTHPI',src='FRED')#All-Transactions House Price Index for the United States 
+USSTHPI<-data.frame(date=index(USSTHPI), coredata(USSTHPI))
+
+getSymbols('FIXHAI',src='FRED')#Housing Affordability Index (Fixed)
+FIXHAI<-data.frame(date=index(FIXHAI), coredata(FIXHAI))
+
+```
+
+**Case-Shiller U.S. National Home Price Index:** see  [Standard & Poor's](https://www.spglobal.com/spdji/en/documents/methodologies/methodology-sp-corelogic-cs-home-price-indices.pdf){target="_blank"}
+
+**House Price Index:** see [Federal Housing Finance Agency](https://www.fhfa.gov/DataTools/Downloads/Pages/House-Price-Index.aspx){target="_blank"}
+
+**Housing Affordability Index:** Measures the degree to which a typical family can afford the monthly mortgage payments on a typical home. (sources:National Association of Realtors, Housing Affordability Index (Fixed), retrieved from FRED, Federal Reserve Bank of St. Louis;)
+
+### **S&P/Case-Shiller U.S. National Home Price Index**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(CSUSHPINSA,x=~date,y=~CSUSHPINSA,mode="line",type="scatter",line = list(color = 'rgb(205, 12, 24)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = ""))
+```
+
+### **House Price Index**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(USSTHPI,x=~date,y=~USSTHPI,mode="line",type="scatter",line = list(color = 'rgb(205, 12, 24)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = ""))
+```
+
+### **Housing Affordability Index**
+```{r,message=FALSE,warning=FALSE}
+plot_ly(FIXHAI,x=~date,y=~FIXHAI,mode="line",type="scatter",line = list(color = 'rgb(205, 12, 24)'))%>%
+  config(displayModeBar = FALSE)%>%
+  layout(xaxis = list(title = ""), yaxis = list (title = ""))
+```
+
+
+Federal Reserve
+=======================================================================
+### Assets: Securities Held Outright: Mortgage-Backed Securities and Case-Shiller U.S. National Home Price Index
+
+```{r,message=FALSE,warning=FALSE,include=FALSE}
+
+getSymbols('CSUSHPINSA',src='FRED')#S&P/Case-Shiller U.S. National Home Price Index 
+CSUSHPINSA<-CSUSHPINSA["2008/"]
+CSUSHPINSA<-data.frame(Date=index(CSUSHPINSA), coredata(CSUSHPINSA))
+CSUSHPINSA<- CSUSHPINSA %>% mutate(Date=as.Date(as.yearmon(Date), frac = 1))
+
+
+getSymbols('WSHOMCB',src='FRED')#Assets: Securities Held Outright: Mortgage-Backed Securities: Wednesday Level
+WSHOMCB<-WSHOMCB["2008/"]
+WSHOMCB<-apply.monthly(WSHOMCB,mean)
+WSHOMCB<-data.frame(date=index(WSHOMCB), coredata(WSHOMCB))
+
+WSHOMCB<- select(WSHOMCB,-date)
+
+l<-nrow(WSHOMCB)
+Date<- seq(as.Date("2008-02-01"),length=l,by="months")-1
+
+WSHOMCB<-cbind(Date,WSHOMCB)
+
+fed_sc<-left_join(WSHOMCB,CSUSHPINSA)
+
+fed_sc_xts <- xts(fed_sc[,-1], order.by=as.Date(fed_sc$Date))
+
+```
+
+```{r}
+dygraph(fed_sc_xts) %>%
+  dyRangeSelector() %>%
+  dySeries("CSUSHPINSA", label = "Case-Shiller U.S. National Home Price Index",color="#000000", axis=('y2')) %>%
+  dyFilledLine('WSHOMCB',label = "MBS(Millions of U.S. Dollars)",color="#ab0f12")%>%
+  dyShading(from = "2020-02-01", to = "2020-04-01")%>%
+  dyRangeSelector(height = 20, strokeColor = "",dateWindow = c("2019-01-01", "2024-04-01"))%>%
+  dyLegend(width = 600)%>%
+  dyOptions(drawPoints = TRUE, pointSize = 2,axisLineWidth = 1.5, gridLineColor = "lightblue",strokeWidth = 2, maxNumberWidth =12)%>%
+  dyAxis("y2", label = "Case-Shiller", valueRange = c(140,330), independentTicks = TRUE)%>%
+  dyAxis("y", label = "MBS", valueRange = c(0, 2800000), independentTicks = TRUE)%>%
+  dyLegend(width = 700)
+
+```
+
